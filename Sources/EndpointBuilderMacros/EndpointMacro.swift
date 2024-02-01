@@ -71,7 +71,7 @@ extension EndpointMacro: MemberMacro {
 
 		// MARK: Extract `path` variable and parse into RoutingKit [PathComponent]
 
-		guard let pathVariable = variables.compactMap({ variable -> ArrayElementListSyntax? in
+		guard let pathVariable = try variables.compactMap({ variable -> ArrayElementListSyntax? in
 			let bindingNamedPath = variable.bindings.first(where: { binding in
 				binding.pattern
 					.as(IdentifierPatternSyntax.self)?
@@ -87,8 +87,13 @@ extension EndpointMacro: MemberMacro {
 				return nil
 			}
 
-			return bindingNamedPath?.initializer?.value
-				.as(ArrayExprSyntax.self)?.elements
+			guard let pathValue = bindingNamedPath?.initializer?.value.as(ArrayExprSyntax.self)?.elements else {
+				throw Error
+					.message("Could not parse `path`")
+					.diagnostics(at: bindingNamedPath?.initializer.map { Syntax($0) } ?? Syntax(variable))
+			}
+
+			return pathValue
 		}).first else {
 			return ([], nil)
 		}
@@ -170,7 +175,47 @@ extension EndpointMacro: MemberMacro {
 		declaration: D,
 		_ pathParameters: [PathComponent]
 	) throws -> [DeclSyntax] {
-		[
+		guard !pathParameters.isEmpty else {
+			return []
+		}
+		let pathParameterBlockItems = pathParameters.map { pathParameter in
+			MemberBlockItemSyntax(
+				decl: VariableDeclSyntax(
+					modifiers: declaration.modifiers,
+					Keyword.let,
+					name: PatternSyntax(stringLiteral: pathParameter.description.camelCased),
+					type: TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: "String"))
+				)
+			)
+		}
+		let initializerBlockItem = MemberBlockItemSyntax(
+			decl: InitializerDeclSyntax(
+				modifiers: declaration.modifiers,
+				signature: FunctionSignatureSyntax(
+					parameterClause: FunctionParameterClauseSyntax(
+						parameters: FunctionParameterListSyntax(pathParameters.map({ pathParameter in
+							FunctionParameterSyntax(
+								firstName: .identifier(pathParameter.description.camelCased),
+								type: TypeSyntax(stringLiteral: "String")
+							)
+						}))
+					)
+				),
+				body: CodeBlockSyntax(
+					statements: CodeBlockItemListSyntax(pathParameters.map({ pathParameter in
+						CodeBlockItemSyntax(item: .expr(ExprSyntax(InfixOperatorExprSyntax(
+							leftOperand: MemberAccessExprSyntax(
+								base: DeclReferenceExprSyntax(baseName: .keyword(.self)),
+								declName: DeclReferenceExprSyntax(baseName: .identifier(pathParameter.description.camelCased))
+							), 
+							operator: AssignmentExprSyntax(),
+							rightOperand: DeclReferenceExprSyntax(baseName: .identifier(pathParameter.description.camelCased))
+						))))
+					}))
+				)
+			)
+		)
+		return [
 			VariableDeclSyntax(
 				modifiers: declaration.modifiers,
 				Keyword.let,
@@ -186,16 +231,9 @@ extension EndpointMacro: MemberMacro {
 						InheritedTypeSyntax(type: IdentifierTypeSyntax(name: TokenSyntax(stringLiteral: "Sendable")))
 					}
 				),
-				memberBlock: MemberBlockSyntax(members: MemberBlockItemListSyntax(pathParameters.map { pathParameter in
-					MemberBlockItemSyntax(
-						decl: VariableDeclSyntax(
-							modifiers: declaration.modifiers,
-							Keyword.let,
-							name: PatternSyntax(stringLiteral: pathParameter.description.camelCased),
-							type: TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: "String"))
-						)
-					)
-				}))
+				memberBlock: MemberBlockSyntax(
+					members: MemberBlockItemListSyntax([initializerBlockItem] + pathParameterBlockItems)
+				)
 			).as(DeclSyntax.self)
 		].compactMap({ $0 })
 	}
