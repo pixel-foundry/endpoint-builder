@@ -51,6 +51,45 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 		}
 	}
 
+	func testMultiplePathParameters() {
+		assertMacro {
+			"""
+			@Endpoint
+			public struct GetUserEndpoint {
+				public static let path: [RoutingKit.PathComponent] = ["team", ":team-id", "user", ":user-id"]
+				public static let httpMethod = HTTPRequest.Method.get
+				public static let responseType = User.self
+			}
+			"""
+		} expansion: {
+			"""
+			public struct GetUserEndpoint {
+				public static let path: [RoutingKit.PathComponent] = ["team", ":team-id", "user", ":user-id"]
+				public static let httpMethod = HTTPRequest.Method.get
+				public static let responseType = User.self
+
+				public var path: String {
+					"/" + ["team", pathParameters.teamId, "user", pathParameters.userId].joined(separator: "/")
+				}
+
+				public let pathParameters: PathParameters
+
+				public struct PathParameters: Hashable, Sendable {
+					public init(teamId: String, userId: String) {
+						self.teamId = teamId
+						self.userId = userId
+					}
+					public let teamId: String
+					public let userId: String
+				}
+			}
+
+			extension GetUserEndpoint: EndpointBuilder.Endpoint {
+			}
+			"""
+		}
+	}
+
 	func testDiagnosticsForUnsupportedPathComponent() {
 		assertMacro {
 			"""

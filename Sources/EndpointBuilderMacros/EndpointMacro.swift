@@ -196,7 +196,8 @@ extension EndpointMacro: MemberMacro {
 						parameters: FunctionParameterListSyntax(pathParameters.map({ pathParameter in
 							FunctionParameterSyntax(
 								firstName: .identifier(pathParameter.description.camelCased),
-								type: TypeSyntax(stringLiteral: "String")
+								type: TypeSyntax(stringLiteral: "String"),
+								trailingComma: pathParameter == pathParameters.last ? nil : TokenSyntax.commaToken()
 							)
 						}))
 					)
