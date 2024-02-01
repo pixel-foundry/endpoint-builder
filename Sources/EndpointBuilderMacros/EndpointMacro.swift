@@ -196,7 +196,8 @@ extension EndpointMacro: MemberMacro {
 						parameters: FunctionParameterListSyntax(pathParameters.map({ pathParameter in
 							FunctionParameterSyntax(
 								firstName: .identifier(pathParameter.description.camelCased),
-								type: TypeSyntax(stringLiteral: "String")
+								type: TypeSyntax(stringLiteral: "String"),
+								trailingComma: pathParameter == pathParameters.last ? nil : TokenSyntax.commaToken()
 							)
 						}))
 					)
@@ -207,7 +208,7 @@ extension EndpointMacro: MemberMacro {
 							leftOperand: MemberAccessExprSyntax(
 								base: DeclReferenceExprSyntax(baseName: .keyword(.self)),
 								declName: DeclReferenceExprSyntax(baseName: .identifier(pathParameter.description.camelCased))
-							), 
+							),
 							operator: AssignmentExprSyntax(),
 							rightOperand: DeclReferenceExprSyntax(baseName: .identifier(pathParameter.description.camelCased))
 						))))
