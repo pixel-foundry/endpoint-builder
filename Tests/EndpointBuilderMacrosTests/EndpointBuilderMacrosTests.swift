@@ -38,6 +38,9 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 				public let pathParameters: PathParameters
 
 				public struct PathParameters: Hashable, Sendable {
+					public init(id: String) {
+						self.id = id
+					}
 					public let id: String
 				}
 			}
@@ -71,4 +74,41 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 			"""
 		}
 	}
+
+	func testDiagnosticsForUnparsablePathDefinition() {
+		// Referencing the `path` of another Endpoint is valid Swift but I don’t think there’s any way for
+		// a Macro to expand the underlying type of the reference, so it’s easier to just emit diagnostics to forbid this.
+		assertMacro {
+			"""
+			@Endpoint
+			public struct One {
+				public static let path: [RoutingKit.PathComponent] = ["one"]
+				public static let httpMethod = HTTPRequest.Method.get
+			}
+
+			@Endpoint
+			public struct Two {
+				public static let path: [RoutingKit.PathComponent] = One.path
+				public static let httpMethod = HTTPRequest.Method.get
+			}
+			"""
+		} diagnostics: {
+			"""
+			@Endpoint
+			public struct One {
+				public static let path: [RoutingKit.PathComponent] = ["one"]
+				public static let httpMethod = HTTPRequest.Method.get
+			}
+
+			@Endpoint
+			public struct Two {
+				public static let path: [RoutingKit.PathComponent] = One.path
+			                                                    ┬─────────
+			                                                    ╰─ 🛑 Could not parse `path`
+				public static let httpMethod = HTTPRequest.Method.get
+			}
+			"""
+		}
+	}
+
 }
