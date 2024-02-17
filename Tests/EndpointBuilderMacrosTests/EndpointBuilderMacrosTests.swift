@@ -20,7 +20,6 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 				public static let path: [RoutingKit.PathComponent] = ["user", ":id"]
 				public static let httpMethod = HTTPRequest.Method.get
 				public static let responseType = User.self
-				public let authorization: Authorization?
 			}
 			"""
 		} expansion: {
@@ -29,7 +28,8 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 				public static let path: [RoutingKit.PathComponent] = ["user", ":id"]
 				public static let httpMethod = HTTPRequest.Method.get
 				public static let responseType = User.self
-				public let authorization: Authorization?
+
+				public var authorization: Authorization?
 
 				public var path: String {
 					"/" + ["user", pathParameters.id].joined(separator: "/")
@@ -67,6 +67,8 @@ final class EndpointBuilderMacrosTests: XCTestCase {
 				public static let path: [RoutingKit.PathComponent] = ["team", ":team-id", "user", ":user-id"]
 				public static let httpMethod = HTTPRequest.Method.get
 				public static let responseType = User.self
+
+				public var authorization: Authorization?
 
 				public var path: String {
 					"/" + ["team", pathParameters.teamId, "user", pathParameters.userId].joined(separator: "/")

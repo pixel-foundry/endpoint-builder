@@ -40,6 +40,15 @@ extension EndpointMacro: MemberMacro {
 		providingMembersOf declaration: D,
 		in context: C
 	) throws -> [DeclSyntax] {
+		let authorizationDefinition = [
+			VariableDeclSyntax(
+				modifiers: declaration.modifiers,
+				Keyword.var,
+				name: PatternSyntax(stringLiteral: "authorization"),
+				type: TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: "Authorization?"))
+			).as(DeclSyntax.self)
+		].compactMap { $0 }
+
 		let (pathComponents, pathVariableSyntax) = try endpointPathParameters(declaration: declaration)
 		let pathParameters = pathComponents.filter { pathComponent in
 			guard case .parameter = pathComponent else {
@@ -57,7 +66,7 @@ extension EndpointMacro: MemberMacro {
 			return try endpointPathParametersStructDefinition(declaration: declaration, pathParameters)
 		}()
 
-		return pathDefinition + structDefinition
+		return authorizationDefinition + pathDefinition + structDefinition
 	}
 
 	@usableFromInline
